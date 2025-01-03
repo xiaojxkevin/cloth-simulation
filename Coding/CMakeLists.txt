@@ -6,8 +6,9 @@
 
 cmake_minimum_required(VERSION 3.18)
 
-project(mass-spring-cloth-simulation)
-set (CMAKE_CXX_STANDARD 20)
+project(Cloth-Simulation)
+
+set (CMAKE_CXX_STANDARD 17)
 
 # Add include path
 include_directories(
@@ -33,10 +34,14 @@ include_directories(${GLAD_INCLUDE})
 # glm
 add_subdirectory(extern/glm)
 list(APPEND DEPENDENCIES glm::glm)
+
+# OpenMP
+find_package(OpenMP)
+if(OpenMP_FOUND)
+	message(STATUS "OpenMP Found.")
+    include_directories(${OpenMP_CXX_INCLUDE_DIRS})
+endif()
 # ############################################
-
-
-
 
 # Add the main library
 add_library(libmain
@@ -54,4 +59,4 @@ target_link_libraries(libmain PUBLIC ${DEPENDENCIES})
 
 # The main opengl framework for simulation and rendering
 add_executable(main test/main.cpp)
-target_link_libraries(main PUBLIC libmain)
+target_link_libraries(main PUBLIC libmain OpenMP::OpenMP_CXX)
