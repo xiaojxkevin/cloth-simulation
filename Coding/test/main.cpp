@@ -6,6 +6,7 @@
 
 #include "cloth_renderer.hpp"
 #include "cloth_simulator.hpp"
+#include "world_frame.hpp"
 
 
 // constants
@@ -16,7 +17,6 @@ extern const float timeStep = 0.01f;
 // global
 glm::vec3 mouseRay = glm::vec3(0.0f);
 bool scratching = false;
-bool lock = false;
 
 
 void processCameraInput(GLFWwindow* window, FirstPersonCamera* camera);
@@ -73,6 +73,11 @@ int main(int argc, char* argv[])
         auto vertexShader = "/home/xiaojx/codes/cloth-simulation/Coding/res/shader/cloth.vs";
         auto fragmentShader = "/home/xiaojx/codes/cloth-simulation/Coding/res/shader/cloth.fs";
 
+        /// axis settings
+        WorldFrame wf;
+        Shader axisShader("/home/xiaojx/codes/cloth-simulation/Coding/res/shader/axis.vs",
+            "/home/xiaojx/codes/cloth-simulation/Coding/res/shader/axis.fs");
+
         // Cloth settings
         unsigned int nWidth = 10;
         unsigned int nHeight = 10;
@@ -117,9 +122,9 @@ int main(int argc, char* argv[])
 
                 processCameraInput(window, &camera);
 
-                // Debug Update here only when p is pressed
-                //if(glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS)
-                if (true)
+                /// Debug Update here only when p is pressed
+                if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS)
+                // if (true)
                 {
                     // A fixed time step which should not be too large in order to stabilize the simulation
                     totalIterTime += deltaTime;
@@ -133,9 +138,7 @@ int main(int argc, char* argv[])
 
                         // Simulate one step
                         simulator.step_fast();
-                        simulator.updateScratchPoint(camera.getCameraPos(), mouseRay, scratching, lock);
-                        
-
+                        simulator.updateScratchPoint(camera.getCameraPos(), mouseRay, scratching);
 
                         float timeTaken = static_cast<float>(glfwGetTime()) - currentTime;
                         if (timeTaken > deltaTime) {
@@ -150,7 +153,12 @@ int main(int argc, char* argv[])
 
             // Draw here
             renderer.draw();
-            lock = false;
+
+            /// axis
+            axisShader.use();
+            axisShader.setMat4("projection", camera.getProjection());
+            axisShader.setMat4("view", camera.getView());
+            wf.draw(axisShader.id);
 
             // Swap front and back buffers
             glfwSwapBuffers(window);
@@ -230,11 +238,6 @@ void processCameraInput(GLFWwindow* window, FirstPersonCamera* camera)
     }
     else {
         scratching = false;
-    }
-
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
-        mouseRay = camera->getMouseRay(curCursorX, curCursorY, Width, Height);
-        lock = true;
     }
 
     // update record

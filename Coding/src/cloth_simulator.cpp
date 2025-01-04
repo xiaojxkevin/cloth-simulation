@@ -4,6 +4,9 @@
 #include <omp.h>
 
 extern const float timeStep;
+/// sphere info
+static glm::vec3 spherePos = {0.0f, -1.5f, 0.0f}; 
+static float sphereRadiance = 0.1f;
 
 RectClothSimulator::
 RectClothSimulator(
@@ -12,7 +15,7 @@ RectClothSimulator(
         float stiffnessReference,
         float airResistanceCoefficient,
         const glm::vec3& gravity) : cloth(cloth), airResistanceCoefficient(airResistanceCoefficient), 
-                                    gravity(gravity), max_iter(1) {
+                                    gravity(gravity), max_iter(2) {
     // Initialize particles, then springs according to the given cloth
     createMassParticles(totalMass);
     createSprings(stiffnessReference);
@@ -149,13 +152,22 @@ void RectClothSimulator::step_fast() {
     /// compute the next state
     auto qn_next = solve();
     
-    /// assign previous state with current state
-    qn_1 = qn;
-    
     /// Do not update fixed particles
     for (int i = 0 ; i < particles.size(); i++){
         if (particles[i].isFixed) {
             qn_next.block<3, 1>(3 * i, 0) = qn.block<3, 1>(3 * i, 0);
+        }
+
+        /// collision test
+        glm::vec3 p{qn_next(3 * i, 0) - spherePos.x,
+            qn_next(3 * i + 1, 0) - spherePos.y,
+            qn_next(3 * i + 2, 0) - spherePos.z};
+        float dis = glm::length(p);
+        if (dis < sphereRadiance)
+        {
+            glm::vec3 dVec = glm::normalize(p);
+            for (int j = 0; j != 3; ++j)
+                qn_next(3 * i + j, 0) = spherePos[j] + sphereRadiance * dVec[j];
         }
     }
 
@@ -163,7 +175,7 @@ void RectClothSimulator::step_fast() {
     qn = std::move(qn_next);
 
     /// Apply constraints
-    this->applyConstraints();
+    // this->applyConstraints();
 
     /// update info for particles
     for (int i = 0; i < particles.size(); ++i) {
@@ -200,6 +212,8 @@ solve() {
 
     for (int i = 0; i < max_iter; i++) {
 
+        qn_1 = qn;
+
         /// local step
         for (int j = 0; j < springs.size(); ++j) {
             int from = springs[j].fromMassIndex, to = springs[j].toMassIndex;
@@ -219,9 +233,27 @@ getExternalForceVector() {
         externalForceVector = Eigen::MatrixXf::Zero(3 * particles.size(), 1);
     for (int i = 0; i < particles.size(); i++) {
         const MassParticle &cur = particles[i];
-        glm::vec3 force{0.0f, 0.0f, 0.0f};
+        glm::vec3 force(0.0f);
         force += cur.mass * gravity;
         force -= airResistanceCoefficient * cur.v;
+
+        /// collision test
+        // float dis = glm::length(cur.position - spherePos);
+        // if (dis - sphereRadiance <= 1e-4f)
+        // {
+        //     glm::vec3 dVec = glm::normalize(cur.position - spherePos);
+        //     if (glm::dot(cur.v, dVec) < -0.0f) 
+        //     {
+        //         /// add a force on the particle
+        //         /// F*t = m * \delta v -> F = (2 * m * v) / t
+        //         force -= 2.0f * glm::dot(cur.v, dVec) * dVec * cur.mass / timeStep 
+        //             + cur.mass * gravity;
+        //         std::cout << cur.v.x<<
+        //              ' ' << cur.v.y << 
+        //              ' ' << cur.v.z << '\n';
+        //     }
+        // }
+
         externalForceVector(3 * i) = force[0];
         externalForceVector(3 * i + 1) = force[1];
         externalForceVector(3 * i + 2) = force[2];
@@ -240,7 +272,7 @@ updateCloth() {
 
 
 void RectClothSimulator::
-updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update,  bool lock) {
+updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update) {
 
     /// to update the existed point
     if (update && scratchPoint != nullptr) {
@@ -249,14 +281,11 @@ updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update,  bool lock) {
         int scratch_index = scratchPoint - &particles[0];
         qn.block<3, 1>(3 * scratch_index, 0) = newPositionEigen;
         qn_1.block<3, 1>(3 * scratch_index, 0) = newPositionEigen;
-        if (lock) {
-            scratchPoint->isFixed = true; 
-        }
     }
 
     /// to update a point that does not existed
     if (update && scratchPoint == nullptr) {
-        float dist = 1.0f;
+        float dist = 0.1f;
         for (MassParticle& particle : particles) {
             glm::vec3 diffVec = particle.position - ori;
             glm::vec3 distanceVec = diffVec - glm::dot(diffVec, dir) * dir;

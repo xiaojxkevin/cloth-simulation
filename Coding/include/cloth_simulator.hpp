@@ -61,7 +61,7 @@ public:
 
     /// project
     void step_fast();
-    void updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update, bool lock);
+    void updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update);
 
 private:
     void createMassParticles(float totalMass);

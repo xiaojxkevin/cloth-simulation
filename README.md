@@ -20,4 +20,8 @@ Final Project of CS171 in ShanghaiTech
 - Finish `fast_step`. However, I have got some problems:
   1. In the local step, how to fix `x` and solve for `d`?
   2. When calculate `externalForceVector`, we have got to assign a negative sign, why is that?
-  3. When the program begins, why does it move so slowly?
+   
+### xjx-dev
+
+- Fix a bug in scratch.
+- I have written the sphere collision test. But when the radius is small, the program fails. 
