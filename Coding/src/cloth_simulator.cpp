@@ -145,28 +145,89 @@ initMatrices() {
     this->qn_1 = this->qn;
 }
 
-
-
 void RectClothSimulator::step_fast() {
-    applyConstraints();
-
-
-    auto qn_add_1 = solve();
+    /// compute the next state
+    auto qn_next = solve();
+    
+    /// assign previous state with current state
     qn_1 = qn;
-    for(int i = 0 ; i < particles.size();i++){
-        if(particles[i].isFixed){
-            qn_add_1.block<3, 1>(3 * i, 0) = qn.block<3, 1>(3 * i, 0);
+    
+    /// Do not update fixed particles
+    for (int i = 0 ; i < particles.size(); i++){
+        if (particles[i].isFixed) {
+            qn_next.block<3, 1>(3 * i, 0) = qn.block<3, 1>(3 * i, 0);
         }
     }
-    qn = qn_add_1;
+
+    /// assign current state with previous state
+    qn = std::move(qn_next);
+
+    /// Apply constraints
+    this->applyConstraints();
+
+    /// update info for particles
     for (int i = 0; i < particles.size(); ++i) {
         particles[i].position = glm::vec3(qn(3 * i, 0), qn(3 * i + 1, 0), qn(3 * i + 2, 0));
-        particles[i].v = glm::vec3(qn(3 * i, 0) - qn_1(3 * i, 0),   qn(3 * i + 1, 0) - qn_1(3 * i + 1, 0),   qn(3 * i + 2, 0) - qn_1(3 * i + 2, 0)); //�������������
+        particles[i].v = glm::vec3(qn(3 * i, 0) - qn_1(3 * i, 0), 
+            qn(3 * i + 1, 0) - qn_1(3 * i + 1, 0), 
+            qn(3 * i + 2, 0) - qn_1(3 * i + 2, 0)) / timeStep;
     }
 
     updateCloth();
 }
 
+void RectClothSimulator::
+applyConstraints() {
+    int left_up_index = cloth->idxFromCoord(0, 0);
+    int right_up_index = cloth->idxFromCoord(cloth->nw - 1, 0);
+    qn.block<3, 1>(3 * left_up_index, 0) = 
+        std::move(Eigen::Vector3f(cloth->getInitialPosition(0, 0).x, 
+            cloth->getInitialPosition(0, 0).y, 
+            cloth->getInitialPosition(0, 0).z));
+    this->qn.block<3, 1>(3 * right_up_index, 0) = 
+        std::move(Eigen::Vector3f(cloth->getInitialPosition(cloth->nw - 1, 0).x, 
+            cloth->getInitialPosition(cloth->nw - 1, 0).y, 
+            cloth->getInitialPosition(cloth->nw - 1, 0).z));
+    
+}
+
+Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> RectClothSimulator::
+solve() {
+    Eigen::Matrix<float, Eigen::Dynamic, 1> y = 2 * qn - qn_1;
+    Eigen::Matrix<float, Eigen::Dynamic, 1> b = std::move(-mass_matrix * y + this->getExternalForceVector());
+    Eigen::Matrix<float, Eigen::Dynamic, 1> d = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>::Zero(3 * springs.size(), 1);
+    Eigen::Matrix<float, Eigen::Dynamic, 1> x = y;
+
+    for (int i = 0; i < max_iter; i++) {
+
+        /// local step
+        for (int j = 0; j < springs.size(); ++j) {
+            int from = springs[j].fromMassIndex, to = springs[j].toMassIndex;
+            Eigen::Vector3f p12 = x.block<3, 1>(3 * from, 0) - x.block<3, 1>(3 * to, 0);
+            d.block<3, 1>(3 * j, 0) = p12 / p12.norm() * springs[j].rest_length;
+        }
+
+        /// global step
+        x = cholesky_decompsition.solve(timeStep * timeStep * J_matrix * d - b);
+    }
+    return x;
+}
+
+Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> RectClothSimulator::
+getExternalForceVector() {
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> 
+        externalForceVector = Eigen::MatrixXf::Zero(3 * particles.size(), 1);
+    for (int i = 0; i < particles.size(); i++) {
+        const MassParticle &cur = particles[i];
+        glm::vec3 force{0.0f, 0.0f, 0.0f};
+        force += cur.mass * gravity;
+        force -= airResistanceCoefficient * cur.v;
+        externalForceVector(3 * i) = force[0];
+        externalForceVector(3 * i + 1) = force[1];
+        externalForceVector(3 * i + 2) = force[2];
+    }
+    return timeStep * timeStep * -externalForceVector;
+}
 
 void RectClothSimulator::
 step(float timeStep) {
@@ -219,55 +280,6 @@ step(float timeStep) {
     // Finally update cloth data
     updateCloth();
 }
-
-void RectClothSimulator::applyConstraints() {
-    int left_up_index = cloth->idxFromCoord(0, 0);
-    int right_up_index = cloth->idxFromCoord(cloth->nw - 1, 0);
-    qn.block<3, 1>(3 * left_up_index, 0) = Eigen::Vector3f(cloth->getInitialPosition(0, 0).x, cloth->getInitialPosition(0, 0).y, cloth->getInitialPosition(0, 0).z);
-    qn.block<3, 1>(3 * right_up_index, 0) = Eigen::Vector3f(cloth->getInitialPosition(cloth->nw - 1, 0).x, cloth->getInitialPosition(cloth->nw - 1, 0).y, cloth->getInitialPosition(cloth->nw - 1, 0).z);
-    
-}
-
-Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> RectClothSimulator::getExternalForceVector() {
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> externalForceVector = Eigen::MatrixXf::Zero(3 * particles.size(), 1);
-    for (int i = 0; i < particles.size(); i++) {
-        MassParticle cur = particles[i];
-        glm::vec3 grav = cur.mass * gravity;
-        externalForceVector(3 * i) = grav[0];
-        externalForceVector(3 * i + 1) = grav[1];
-        externalForceVector(3 * i + 2) = grav[2];
-    }
-    return timeStep * timeStep * -externalForceVector;
-}
-
-
-
-Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> RectClothSimulator::solve() {
-
-    Eigen::Matrix<float, Eigen::Dynamic, 1> y = 2 * qn - qn_1;
-    auto stratTime_0 = omp_get_wtime();
-
-    Eigen::Matrix<float, Eigen::Dynamic, 1> b = -mass_matrix * y + getExternalForceVector();
-    Eigen::Matrix<float, Eigen::Dynamic, 1> x = y;
-    Eigen::Matrix<float, Eigen::Dynamic, 1> d = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>::Zero(3 * springs.size(), 1);
-
-    for (int i = 0; i < max_iter; i++) {
-
-        for (int j = 0; j < springs.size(); ++j) {
-            int a = springs[j].fromMassIndex, b = springs[j].toMassIndex;
-            Eigen::Vector3f p12 = x.block<3, 1>(3 * a, 0) - x.block<3, 1>(3 * b, 0);
-            d.block<3, 1>(3 * j, 0) = springs[j].rest_length * p12 / p12.norm();
-        }
-
-        x = cholesky_decompsition.solve(timeStep * timeStep * J_matrix * d - b);
-    }
-    auto endTime_0 = omp_get_wtime();
-    std::cout << "solve time: " << (endTime_0 - stratTime_0) * 1000 << "ms" << std::endl;
-
-    return x;
-}
-
-
 
 void RectClothSimulator::
 updateCloth() {
