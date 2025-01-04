@@ -59,9 +59,6 @@ public:
             const glm::vec3& gravity);
     ~RectClothSimulator() = default;
 
-    void step(float timeStep);
-
-
     /// project
     void step_fast();
     void updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update, bool lock);

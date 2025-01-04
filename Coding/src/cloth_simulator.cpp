@@ -229,57 +229,6 @@ getExternalForceVector() {
     return timeStep * timeStep * -externalForceVector;
 }
 
-void RectClothSimulator::
-step(float timeStep) {
-    // TODO: Simulate one step based on given time step.
-    //  Step 1: Update particle positions
-    //  Step 2: Update springs
-    //  Step 3: Apply constraints
-    //  Hint: See cloth_simulator.hpp to check for member variables you need.
-    //  Hint: You may use 'cloth->getInitialPosition(...)' for constraints.
-
-
-    for (int ih = 0; ih < cloth->nh; ih++) {
-        for (int iw = 0; iw < cloth->nw; iw++) {
-            int currentParticleIndex = cloth->idxFromCoord(iw, ih);
-            //glm::vec3 wind = { 8.0f * particles[currentParticleIndex].mass, 0.0f,0.0f };   //����
-            //particles[currentParticleIndex].a = gravity + wind / particles[currentParticleIndex].mass;
-            particles[currentParticleIndex].a = gravity;
-            glm::vec3 air_res = airResistanceCoefficient * particles[currentParticleIndex].v / particles[currentParticleIndex].mass;
-            particles[currentParticleIndex].a -= air_res;
-        }
-    }
-
-    for (int i = 0; i < springs.size(); i++)
-    {
-        int toMassIndex = springs[i].toMassIndex;
-        int fromMassIndex = springs[i].fromMassIndex;
-        float springLength = glm::length(particles[toMassIndex].position - particles[fromMassIndex].position);
-        glm::vec3 tension = springs[i].stiff * (springLength - springs[i].rest_length) * glm::normalize(particles[toMassIndex].position - particles[fromMassIndex].position);
-        particles[fromMassIndex].a += tension / particles[fromMassIndex].mass;
-        particles[toMassIndex].a -= tension / particles[toMassIndex].mass;
-    }
-
-    for (int ih = 0; ih < cloth->nh; ih++) {
-        for (int iw = 0; iw < cloth->nw; iw++) {
-            int currentParticleIndex = cloth->idxFromCoord(iw, ih);
-            if (currentParticleIndex == 0 || currentParticleIndex == cloth->nw - 1)
-            {
-                continue;
-            }
-
-            if(particles[currentParticleIndex].isFixed == true){
-                continue;
-            }
-
-            particles[currentParticleIndex].v += particles[currentParticleIndex].a * timeStep;
-            particles[currentParticleIndex].position = particles[currentParticleIndex].position + timeStep * particles[currentParticleIndex].v;
-        }
-    }
-
-    // Finally update cloth data
-    updateCloth();
-}
 
 void RectClothSimulator::
 updateCloth() {
@@ -290,30 +239,24 @@ updateCloth() {
 }
 
 
-float last_lock = 0;
-float cur_lock = 0;
+void RectClothSimulator::
+updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update,  bool lock) {
 
-void RectClothSimulator::updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update,  bool lock) {
+    /// to update the existed point
     if (update && scratchPoint != nullptr) {
-
         auto newPosition = ori + scratchDistance * dir;
         Eigen::Vector3f newPositionEigen(newPosition.x, newPosition.y, newPosition.z);
         int scratch_index = scratchPoint - &particles[0];
         qn.block<3, 1>(3 * scratch_index, 0) = newPositionEigen;
         qn_1.block<3, 1>(3 * scratch_index, 0) = newPositionEigen;
-
-
-        if(lock){
+        if (lock) {
             scratchPoint->isFixed = true; 
         }
-
-
-
-
-
     }
+
+    /// to update a point that does not existed
     if (update && scratchPoint == nullptr) {
-        float dist = INFINITY;
+        float dist = 1.0f;
         for (MassParticle& particle : particles) {
             glm::vec3 diffVec = particle.position - ori;
             glm::vec3 distanceVec = diffVec - glm::dot(diffVec, dir) * dir;
@@ -325,11 +268,10 @@ void RectClothSimulator::updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool u
             }
         }
     }
+
+    /// NO updates and NO points
     if (!update && scratchPoint != nullptr) {
         scratchPoint = nullptr;
         scratchDistance = INFINITY;
     }
-
-    
-
 }

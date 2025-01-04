@@ -8,12 +8,15 @@
 #include "cloth_simulator.hpp"
 
 
+// constants
+const int Width = 1024;
+const int Height = 768;
+extern const float timeStep = 0.01f;
+
+// global
 glm::vec3 mouseRay = glm::vec3(0.0f);
 bool scratching = false;
-int Width = 1024;
-int Height = 768;
 bool lock = false;
-
 
 
 void processCameraInput(GLFWwindow* window, FirstPersonCamera* camera);
@@ -67,9 +70,8 @@ int main(int argc, char* argv[])
         // TODO: Tune overall and cloth settings here (especially shader path)
 
         // Overall settings
-        auto vertexShader = "D:/class/CS171/hw5/cs171-hw5-CoLLinZzZ-master_final/cs171-hw5-CoLLinZzZ-master/Coding/res/shader/cloth.vs";
-        auto fragmentShader = "D:/class/CS171/hw5/cs171-hw5-CoLLinZzZ-master_final/cs171-hw5-CoLLinZzZ-master/Coding/res/shader/cloth.fs";
-        const float timeStep = 0.002f;
+        auto vertexShader = "/home/xiaojx/codes/cloth-simulation/Coding/res/shader/cloth.vs";
+        auto fragmentShader = "/home/xiaojx/codes/cloth-simulation/Coding/res/shader/cloth.fs";
 
         // Cloth settings
         unsigned int nWidth = 10;
@@ -78,7 +80,7 @@ int main(int argc, char* argv[])
         auto clothTransform = glm::rotate(glm::mat4(1.0f),
                                           glm::radians(60.0f), {1.0f, 0.0f, 0.0f}); // Represents a rotation of 60 degrees around the x-axis.
         float totalMass = 1.0f;
-        float stiffnessReference = 40.0f;
+        float stiffnessReference = 10.0f;
         float airResistanceCoefficient = 0.001f;
         glm::vec3 gravity = {0.0f, -9.81f, 0.0f};
 
