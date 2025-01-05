@@ -5,8 +5,8 @@
 
 extern const float timeStep;
 /// sphere info
-static glm::vec3 spherePos = {0.0f, -1.5f, 0.0f}; 
-static float sphereRadiance = 0.1f;
+static glm::vec3 spherePos = {0.5f, -1.5f, 0.0f}; 
+static float sphereRadiance = 0.5f;
 
 RectClothSimulator::
 RectClothSimulator(
@@ -168,6 +168,7 @@ void RectClothSimulator::step_fast() {
             glm::vec3 dVec = glm::normalize(p);
             for (int j = 0; j != 3; ++j)
                 qn_next(3 * i + j, 0) = spherePos[j] + sphereRadiance * dVec[j];
+            qn_1.block<3, 1>(3 * i, 0) = qn_next.block<3, 1>(3 * i, 0);
         }
     }
 
