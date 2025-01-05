@@ -42,6 +42,7 @@ private:
     /// project
     MassParticle* scratchPoint = nullptr;
     float scratchDistance = INFINITY;
+    float damping_factor = 0.993f;
     int max_iter;
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> mass_matrix;
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> L_matrix;

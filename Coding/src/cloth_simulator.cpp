@@ -5,6 +5,7 @@
 
 extern const float timeStep;
 /// sphere info
+#define COLLISION
 static glm::vec3 spherePos = {0.5f, -1.5f, 0.0f}; 
 static float sphereRadiance = 0.5f;
 
@@ -15,7 +16,7 @@ RectClothSimulator(
         float stiffnessReference,
         float airResistanceCoefficient,
         const glm::vec3& gravity) : cloth(cloth), airResistanceCoefficient(airResistanceCoefficient), 
-                                    gravity(gravity), max_iter(2) {
+                                    gravity(gravity), max_iter(3) {
     // Initialize particles, then springs according to the given cloth
     createMassParticles(totalMass);
     createSprings(stiffnessReference);
@@ -151,32 +152,29 @@ initMatrices() {
 void RectClothSimulator::step_fast() {
     /// compute the next state
     auto qn_next = solve();
-    
-    /// Do not update fixed particles
-    for (int i = 0 ; i < particles.size(); i++){
-        if (particles[i].isFixed) {
-            qn_next.block<3, 1>(3 * i, 0) = qn.block<3, 1>(3 * i, 0);
-        }
 
+    /// assign current state with previous state
+    qn = std::move(qn_next);
+
+#ifdef COLLISION
+    for (int i = 0 ; i < particles.size(); i++){
         /// collision test
-        glm::vec3 p{qn_next(3 * i, 0) - spherePos.x,
-            qn_next(3 * i + 1, 0) - spherePos.y,
-            qn_next(3 * i + 2, 0) - spherePos.z};
+        glm::vec3 p{qn(3 * i, 0) - spherePos.x,
+            qn(3 * i + 1, 0) - spherePos.y,
+            qn(3 * i + 2, 0) - spherePos.z};
         float dis = glm::length(p);
         if (dis < sphereRadiance)
         {
             glm::vec3 dVec = glm::normalize(p);
             for (int j = 0; j != 3; ++j)
-                qn_next(3 * i + j, 0) = spherePos[j] + sphereRadiance * dVec[j];
-            qn_1.block<3, 1>(3 * i, 0) = qn_next.block<3, 1>(3 * i, 0);
+                qn(3 * i + j, 0) = spherePos[j] + sphereRadiance * dVec[j];
+            qn_1.block<3, 1>(3 * i, 0) = qn.block<3, 1>(3 * i, 0);
         }
     }
-
-    /// assign current state with previous state
-    qn = std::move(qn_next);
-
+#else
     /// Apply constraints
-    // this->applyConstraints();
+    this->applyConstraints();
+#endif
 
     /// update info for particles
     for (int i = 0; i < particles.size(); ++i) {
@@ -206,15 +204,14 @@ applyConstraints() {
 
 Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> RectClothSimulator::
 solve() {
-    Eigen::Matrix<float, Eigen::Dynamic, 1> y = 2 * qn - qn_1;
+    Eigen::Matrix<float, Eigen::Dynamic, 1> y = (1.0f + damping_factor) * qn - damping_factor * qn_1;
     Eigen::Matrix<float, Eigen::Dynamic, 1> b = std::move(-mass_matrix * y + this->getExternalForceVector());
     Eigen::Matrix<float, Eigen::Dynamic, 1> d = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>::Zero(3 * springs.size(), 1);
-    Eigen::Matrix<float, Eigen::Dynamic, 1> x = y;
+    Eigen::Matrix<float, Eigen::Dynamic, 1> x = std::move(y);
+
+    qn_1 = std::move(qn);
 
     for (int i = 0; i < max_iter; i++) {
-
-        qn_1 = qn;
-
         /// local step
         for (int j = 0; j < springs.size(); ++j) {
             int from = springs[j].fromMassIndex, to = springs[j].toMassIndex;
