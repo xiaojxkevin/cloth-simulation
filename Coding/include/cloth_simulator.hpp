@@ -17,6 +17,8 @@ private:
         glm::vec3 a; // acceleration
         float mass; // mass
         bool isFixed; // True if the particle is fixed
+
+        bool cutted;
         
     };
 
@@ -62,7 +64,7 @@ public:
 
     /// project
     void step_fast();
-    void updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update);
+    void updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update, bool cut);
 
 private:
     void createMassParticles(float totalMass);

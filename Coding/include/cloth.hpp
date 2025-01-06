@@ -10,6 +10,9 @@ private:
     std::vector<glm::vec3> positions;
 
 public:
+
+    std::vector<bool> cutted;
+
     const float dx;
     const unsigned int nw;
     const unsigned int nh;
@@ -31,4 +34,9 @@ public:
 
     void setPosition(unsigned int idx, const glm::vec3& value) { positions[idx] = value; };
     void setPosition(unsigned int iw, unsigned int ih, const glm::vec3& value) { positions[idxFromCoord(iw, ih)] = value; };
+
+
+    void setcut(unsigned int idx) {
+        cutted[idx] = true;
+    }
 };
