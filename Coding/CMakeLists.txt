@@ -9,7 +9,7 @@ cmake_minimum_required(VERSION 3.18)
 project(Cloth-Simulation)
 
 set (CMAKE_CXX_STANDARD 20)
-
+set(YAML_CPP_DIR "extern/yaml-cpp-yaml-cpp-0.7.0")
 # Add include path
 include_directories(
 	src
@@ -41,6 +41,10 @@ if(OpenMP_FOUND)
 	message(STATUS "OpenMP Found.")
     include_directories(${OpenMP_CXX_INCLUDE_DIRS})
 endif()
+
+set(YAML_INCLUDE extern/yaml-cpp-yaml-cpp-0.7.0/include)
+add_subdirectory(${YAML_CPP_DIR} ${CMAKE_BINARY_DIR}/yaml-cpp) 
+include_directories(${YAML_INCLUDE})
 # ############################################
 
 # Add the main library
@@ -61,3 +65,4 @@ target_link_libraries(libmain PUBLIC ${DEPENDENCIES})
 # The main opengl framework for simulation and rendering
 add_executable(main test/main.cpp)
 target_link_libraries(main PUBLIC libmain OpenMP::OpenMP_CXX)
+target_link_libraries(main PRIVATE yaml-cpp)

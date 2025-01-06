@@ -1,0 +1,15 @@
+Mode: "COLLSION"
+cloth:
+  Width: 30
+  Height: 20
+  dx: 0.1
+  Mass: 1.0
+  stiffness: 10.0
+  airResistanceCoefficient: 0.001
+sphere:
+  position_x: 0.5
+  position_y: -1.5
+  position_z: 0
+  radius: 0.5
+  
+

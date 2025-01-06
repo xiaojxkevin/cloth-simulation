@@ -5,7 +5,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
-
+#include <yaml-cpp/yaml.h>
 #include "cloth_renderer.hpp"
 #include "cloth_simulator.hpp"
 #include "world_frame.hpp"
@@ -13,7 +13,7 @@
 #include "stb_image_write.h"
 #include "sphere.h"
 
-//#define SAVE_IMAGE true
+#define SAVE_IMAGE true
 
 // constants
 const int Width = 1024;
@@ -24,13 +24,15 @@ extern const float timeStep = 1.0f / 120.0f;
 glm::vec3 mouseRay = glm::vec3(0.0f);
 bool scratching = false;
 bool cut = false;
+bool collsion = false;
+YAML::Node config = YAML::LoadFile("../Coding/config/config.yaml");
 
 
 void processCameraInput(GLFWwindow* window, FirstPersonCamera* camera);
 void saveImage(const char* filepath, GLFWwindow* w);
 void deleteDirectoryContents(const std::filesystem::path& dir)
 {
-    for (const auto& entry : std::filesystem::directory_iterator(dir)) 
+    for (const auto& entry : std::filesystem::directory_iterator(dir))
         std::filesystem::remove_all(entry.path());
 }
 std::ostream& operator<<(std::ostream& os, const glm::vec3& vec)
@@ -53,7 +55,11 @@ int main(int argc, char* argv[])
 
     /// Clean last kept images
     unsigned long long countFrames = 1; // use for store images
-    //deleteDirectoryContents("../Coding/imgs");
+    std::string mode = config["Mode"].as<std::string>();
+#if SAVE_IMAGE
+        deleteDirectoryContents("../Coding/imgs");
+#endif
+    
 
     GLFWwindow* window;
 
@@ -68,9 +74,9 @@ int main(int argc, char* argv[])
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // Use Core Mode
             // glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE); // Use Debug Context
-        #ifdef __APPLE__
+#ifdef __APPLE__
             glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // fix compilation on OS X
-        #endif
+#endif
         }
 
         // Create a windowed mode window and its OpenGL context
@@ -111,23 +117,33 @@ int main(int argc, char* argv[])
             "../Coding/res/shader/axis.fs");
 
         // Cloth settings
-        unsigned int nWidth = 30;
-        unsigned int nHeight = 20;
-        float dx = 0.1f;
+        unsigned int nWidth = config["cloth"]["Width"].as<int>();
+        unsigned int nHeight = config["cloth"]["Height"].as<int>();
+        float dx = config["cloth"]["dx"].as<float>();
         auto clothTransform = glm::rotate(glm::mat4(1.0f),
-                                          glm::radians(60.0f), {1.0f, 0.0f, 0.0f}); // Represents a rotation of 60 degrees around the x-axis.
-        float totalMass = 1.0f;
-        float stiffnessReference = 10.0f;
-        float airResistanceCoefficient = 0.001f;
-        glm::vec3 gravity = {0.0f, -9.81f, 0.0f};
+            glm::radians(60.0f), { 1.0f, 0.0f, 0.0f }); // Represents a rotation of 60 degrees around the x-axis.
+        float totalMass = config["cloth"]["Mass"].as<float>();
+        float stiffnessReference = config["cloth"]["stiffness"].as<float>();
+        float airResistanceCoefficient = config["cloth"]["airResistanceCoefficient"].as<float>();
+        float sp_x = config["sphere"]["position_x"].as<float>();
+        float sp_y = config["sphere"]["position_y"].as<float>();
+        float sp_z = config["sphere"]["position_z"].as<float>();
+        float r = config["sphere"]["radius"].as<float>();
+        glm::vec3 gravity = { 0.0f, -9.81f, 0.0f };
 
         // Create objects
         Shader shader(vertexShader, fragmentShader);
         FirstPersonCamera camera;
         RectCloth cloth(nWidth, nHeight, dx, clothTransform);
         RectClothRenderer renderer(&shader, &camera, &cloth);
-        RectClothSimulator simulator(&cloth, totalMass, stiffnessReference, airResistanceCoefficient, gravity);
-        Sphere sphere({ 0.5f, -3.0f, 0.0f }, 0.47f);
+        if (mode == "COLLSION") {
+            collsion = true;
+        }
+        else {
+            collsion = false;
+        }
+        RectClothSimulator simulator(&cloth, totalMass, stiffnessReference, airResistanceCoefficient, gravity, { sp_x, sp_y, sp_z }, r, collsion);
+        Sphere sphere({ sp_x, sp_y, sp_z }, r - 0.03f);
         // Setup iteration variables
         float currentTime = (float)glfwGetTime();
         float lastTime = currentTime;
@@ -141,7 +157,7 @@ int main(int argc, char* argv[])
         while (!glfwWindowShouldClose(window))
         {
             // Terminate condition
-            if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+            if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
                 glfwSetWindowShouldClose(window, true);
 
             // Updating
@@ -170,6 +186,7 @@ int main(int argc, char* argv[])
 
                         // Simulate one step
                         simulator.step_fast();
+
                         simulator.updateScratchPoint(camera.getCameraPos(), mouseRay, scratching, cut);
                         // std::cout << camera.getCameraPos() << camera.getView();
 
@@ -187,25 +204,27 @@ int main(int argc, char* argv[])
 
             // Draw here
             renderer.draw();
-            sphere.draw();
+            if (collsion) {
+                sphere.draw();
+            }
             /// axis
             axisShader.use();
             axisShader.setMat4("projection", camera.getProjection());
             axisShader.setMat4("view", camera.getView());
             wf.draw(axisShader.id);
 
-        #if SAVE_IMAGE
+#if SAVE_IMAGE
             /// write window images to dir
             if (countFrames % 2ull == 0)
             {
                 std::ostringstream oss;
-                oss << "../Coding/imgs/" 
+                oss << "../Coding/imgs/"
                     << std::setw(5) << std::setfill('0') << countFrames << ".jpeg";
                 std::string filePath = oss.str();
                 saveImage(filePath.c_str(), window);
             }
             ++countFrames;
-        #endif
+#endif
 
             // Swap front and back buffers
             glfwSwapBuffers(window);
@@ -221,11 +240,12 @@ int main(int argc, char* argv[])
 
 void processCameraInput(GLFWwindow* window, FirstPersonCamera* camera)
 {
-    static bool firstRun {true};
-    static float lastFrame {0};
+    
+    static bool firstRun{ true };
+    static float lastFrame{ 0 };
 
-    static float lastCursorX {0};
-    static float lastCursorY {0};
+    static float lastCursorX{ 0 };
+    static float lastCursorY{ 0 };
 
     double curCursorX, curCursorY;
     glfwGetCursorPos(window, &curCursorX, &curCursorY);
@@ -249,51 +269,51 @@ void processCameraInput(GLFWwindow* window, FirstPersonCamera* camera)
     float cameraMoveSpeed = 3.5f * deltaTime;
     float cameraRotateSpeed = 1.0f * deltaTime;
 
-	if((glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_S) != GLFW_PRESS))
+    if ((glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_S) != GLFW_PRESS))
         camera->moveForward(cameraMoveSpeed);
-    if((glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_W) != GLFW_PRESS))
+    if ((glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_W) != GLFW_PRESS))
         camera->moveBackward(cameraMoveSpeed);
-    if((glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_A) != GLFW_PRESS))
+    if ((glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_A) != GLFW_PRESS))
         camera->moveRight(cameraMoveSpeed);
-    if((glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_D) != GLFW_PRESS))
+    if ((glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_D) != GLFW_PRESS))
         camera->moveLeft(cameraMoveSpeed);
-    if((glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) != GLFW_PRESS))
+    if ((glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) != GLFW_PRESS))
         camera->moveUp(cameraMoveSpeed);
-    if((glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_SPACE) != GLFW_PRESS))
+    if ((glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_SPACE) != GLFW_PRESS))
         camera->moveDown(cameraMoveSpeed);
 
-    if((glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_RIGHT) != GLFW_PRESS))
+    if ((glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_RIGHT) != GLFW_PRESS))
         camera->lookRight(cameraRotateSpeed);
-    if((glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_LEFT) != GLFW_PRESS))
+    if ((glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_LEFT) != GLFW_PRESS))
         camera->lookLeft(cameraRotateSpeed);
-    if((glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_DOWN) != GLFW_PRESS))
+    if ((glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_DOWN) != GLFW_PRESS))
         camera->lookUp(cameraRotateSpeed);
-    if((glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_UP) != GLFW_PRESS))
+    if ((glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_UP) != GLFW_PRESS))
         camera->lookDown(cameraRotateSpeed);
-//    if((glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_E) != GLFW_PRESS))
-//        camera->rotateLeft(cameraRotateSpeed);
-//    if((glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_Q) != GLFW_PRESS))
-//        camera->rotateRight(cameraRotateSpeed);
+    //    if((glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_E) != GLFW_PRESS))
+    //        camera->rotateLeft(cameraRotateSpeed);
+    //    if((glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) && (glfwGetKey(window, GLFW_KEY_Q) != GLFW_PRESS))
+    //        camera->rotateRight(cameraRotateSpeed);
 
-    // camera->lookLeft(cameraRotateSpeed * deltaCursorX * 0.2f);
-    // camera->lookDown(cameraRotateSpeed * deltaCursorY * 0.2f);
+        // camera->lookLeft(cameraRotateSpeed * deltaCursorX * 0.2f);
+        // camera->lookDown(cameraRotateSpeed * deltaCursorY * 0.2f);
 
-
-    if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
-        mouseRay = camera->getMouseRay(curCursorX, curCursorY, Width, Height);
-        scratching = false;
-        cut = true;
+    if (config["Mode"].as<std::string>() == "CUT") {
+        if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+            mouseRay = camera->getMouseRay(curCursorX, curCursorY, Width, Height);
+            scratching = false;
+            cut = true;
+        }
+        else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_C) != GLFW_PRESS) {
+            mouseRay = camera->getMouseRay(curCursorX, curCursorY, Width, Height);
+            scratching = true;
+            cut = false;
+        }
+        else {
+            scratching = false;
+            cut = false;
+        }
     }
-    else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_C) != GLFW_PRESS) {
-        mouseRay = camera->getMouseRay(curCursorX, curCursorY, Width, Height);
-        scratching = true;
-        cut = false;
-    }
-    else {
-        scratching = false;
-        cut = false;
-    }
-
     // update record
     lastCursorX = static_cast<float>(curCursorX);
     lastCursorY = static_cast<float>(curCursorY);
