@@ -7,16 +7,17 @@
 
 FirstPersonCamera::
 FirstPersonCamera() {
-    this->cameraPos = glm::vec3(0.0f, 0.0f, 6.0f);
-    this->cameraForward = glm::vec3(0.0f, 0.0f, -1.0f);
-    this->cameraRight = glm::vec3(1.0f, 0.0f, 0.0f);
-    this->cameraLocalUp = glm::vec3(0.0f, 1.0f, 0.0f);
+    this->cameraPos = glm::vec3(5.90f, 0.0f, 2.00f);
+    this->cameraForward = glm::vec3(-0.932947f,-0.208985f,-0.293148f);
+    this->cameraRight = glm::vec3(0.299767f,0.0f,-0.954013f);
+    this->cameraLocalUp = glm::vec3(-0.199374f,0.977919f,-0.0626467f);
     this->cameraGlobalUp = glm::vec3(0.0f, 1.0f, 0.0f); // world up
 
     this->fov = 1.0f;
     this->aspect = 1;
     this->nearClipDist = 0.1f;
     this->farClipDist = 100.0f;
+
 }
 
 glm::vec3 FirstPersonCamera::getMouseRay(double x, double y, int window_width, int window_height) {

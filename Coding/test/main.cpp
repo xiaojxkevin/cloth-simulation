@@ -1,5 +1,6 @@
 #include <iostream>
 #include <filesystem>
+#include <iomanip>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -12,10 +13,12 @@
 #include "stb_image_write.h"
 
 
+#define SAVE_IMAGE true
+
 // constants
 const int Width = 1024;
 const int Height = 768;
-extern const float timeStep = 0.01f;
+extern const float timeStep = 1.0f / 120.0f;
 
 // global
 glm::vec3 mouseRay = glm::vec3(0.0f);
@@ -28,6 +31,20 @@ void deleteDirectoryContents(const std::filesystem::path& dir)
 {
     for (const auto& entry : std::filesystem::directory_iterator(dir)) 
         std::filesystem::remove_all(entry.path());
+}
+std::ostream& operator<<(std::ostream& os, const glm::vec3& vec)
+{
+    os << vec.x << " " << vec.y << " " << vec.z << '\n';
+    return os;
+}
+std::ostream& operator<<(std::ostream& os, const glm::mat4& mat) {
+    for (int row = 0; row < 4; ++row) {
+        for (int col = 0; col < 4; ++col) {
+            os << mat[row][col] << " ";
+        }
+        os << '\n';
+    }
+    return os;
 }
 
 int main(int argc, char* argv[])
@@ -153,6 +170,7 @@ int main(int argc, char* argv[])
                         // Simulate one step
                         simulator.step_fast();
                         simulator.updateScratchPoint(camera.getCameraPos(), mouseRay, scratching);
+                        // std::cout << camera.getCameraPos() << camera.getView();
 
                         float timeTaken = static_cast<float>(glfwGetTime()) - currentTime;
                         if (timeTaken > deltaTime) {
@@ -175,15 +193,18 @@ int main(int argc, char* argv[])
             axisShader.setMat4("view", camera.getView());
             wf.draw(axisShader.id);
 
+        #if SAVE_IMAGE
             /// write window images to dir
-
             if (countFrames % 2ull == 0)
             {
-                std::string filePath = "../Coding/imgs/" 
-                    + std::to_string(countFrames) + ".jpeg";
+                std::ostringstream oss;
+                oss << "../Coding/imgs/" 
+                    << std::setw(5) << std::setfill('0') << countFrames << ".jpeg";
+                std::string filePath = oss.str();
                 saveImage(filePath.c_str(), window);
             }
             ++countFrames;
+        #endif
 
             // Swap front and back buffers
             glfwSwapBuffers(window);
