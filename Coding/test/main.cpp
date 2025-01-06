@@ -13,7 +13,7 @@
 #include "stb_image_write.h"
 #include "sphere.h"
 
-#define SAVE_IMAGE true
+//#define SAVE_IMAGE true
 
 // constants
 const int Width = 1024;
@@ -23,6 +23,7 @@ extern const float timeStep = 1.0f / 120.0f;
 // global
 glm::vec3 mouseRay = glm::vec3(0.0f);
 bool scratching = false;
+bool cut = false;
 
 
 void processCameraInput(GLFWwindow* window, FirstPersonCamera* camera);
@@ -52,7 +53,7 @@ int main(int argc, char* argv[])
 
     /// Clean last kept images
     unsigned long long countFrames = 1; // use for store images
-    deleteDirectoryContents("../Coding/imgs");
+    //deleteDirectoryContents("../Coding/imgs");
 
     GLFWwindow* window;
 
@@ -126,7 +127,7 @@ int main(int argc, char* argv[])
         RectCloth cloth(nWidth, nHeight, dx, clothTransform);
         RectClothRenderer renderer(&shader, &camera, &cloth);
         RectClothSimulator simulator(&cloth, totalMass, stiffnessReference, airResistanceCoefficient, gravity);
-        Sphere sphere({ 0.5f, -1.5f, 0.0f }, 0.47f);
+        Sphere sphere({ 0.5f, -3.0f, 0.0f }, 0.47f);
         // Setup iteration variables
         float currentTime = (float)glfwGetTime();
         float lastTime = currentTime;
@@ -169,7 +170,7 @@ int main(int argc, char* argv[])
 
                         // Simulate one step
                         simulator.step_fast();
-                        simulator.updateScratchPoint(camera.getCameraPos(), mouseRay, scratching);
+                        simulator.updateScratchPoint(camera.getCameraPos(), mouseRay, scratching, cut);
                         // std::cout << camera.getCameraPos() << camera.getView();
 
                         float timeTaken = static_cast<float>(glfwGetTime()) - currentTime;
@@ -278,12 +279,19 @@ void processCameraInput(GLFWwindow* window, FirstPersonCamera* camera)
     // camera->lookDown(cameraRotateSpeed * deltaCursorY * 0.2f);
 
 
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+    if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+        mouseRay = camera->getMouseRay(curCursorX, curCursorY, Width, Height);
+        scratching = false;
+        cut = true;
+    }
+    else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_C) != GLFW_PRESS) {
         mouseRay = camera->getMouseRay(curCursorX, curCursorY, Width, Height);
         scratching = true;
+        cut = false;
     }
     else {
         scratching = false;
+        cut = false;
     }
 
     // update record
