@@ -27,9 +27,9 @@ void main()
     } else {
         vec3 viewDirection = normalize(fs_in.position - CameraPos);
 
-        // Material settings
-        vec3 diffuseReflectance = vec3(0.8, 0.1, 0.1);
-        vec3 specularReflectance = vec3(0.8, 0.8, 0.8);
+        // Material settings for a blue object
+        vec3 diffuseReflectance = vec3(0.429f, 0.708f, 0.901); // sky blue
+        vec3 specularReflectance = vec3(0.5, 0.5, 0.8); // Bluish highlights
         float shininess = 16.0;
 
         // Ambient contribution
@@ -58,8 +58,6 @@ void main()
             diffuseReflectance,
             specularReflectance,
             shininess);
-
-        // You may add more lights
 
         FragColor = vec4(color, 1);
     }
