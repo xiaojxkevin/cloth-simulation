@@ -17,5 +17,10 @@ RectCloth(
 
 glm::vec3 RectCloth::
 getInitialPosition(unsigned int iw, unsigned int ih) {
+
+    for (int i = 0; i < nw * nh; i++) {
+        cutted.push_back(false);
+    }
+
     return transform * glm::vec4((float)iw * dx - width / 2.0f, (float)ih * dx - height / 2.0f, 0.0f, 1.0f);
 }

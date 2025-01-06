@@ -5,8 +5,8 @@
 
 extern const float timeStep;
 /// sphere info
-#define COLLISION
-static glm::vec3 spherePos = {0.5f, -1.5f, 0.0f}; 
+//#define COLLISION
+static glm::vec3 spherePos = {0.5f, -3.0f, 0.0f}; 
 static float sphereRadiance = 0.5f;
 
 RectClothSimulator::
@@ -33,7 +33,8 @@ createMassParticles(float totalMass) {
                                 .v = glm::vec3(0.0f),
                                 .a = glm::vec3(0.0f),
                                 .mass = totalMass / static_cast<float>(particles.size()),
-                                .isFixed = false
+                                .isFixed = false,
+                                .cutted = false
                                 };
             particles[cloth->idxFromCoord(iw, ih)] = particle;
         }
@@ -168,7 +169,7 @@ void RectClothSimulator::step_fast() {
             glm::vec3 dVec = glm::normalize(p);
             for (int j = 0; j != 3; ++j)
                 qn(3 * i + j, 0) = spherePos[j] + sphereRadiance * dVec[j];
-            qn_1.block<3, 1>(3 * i, 0) = qn.block<3, 1>(3 * i, 0);
+            //qn_1.block<3, 1>(3 * i, 0) = qn.block<3, 1>(3 * i, 0);
         }
     }
 #else
@@ -264,13 +265,21 @@ void RectClothSimulator::
 updateCloth() {
     for (unsigned int i = 0u; i < cloth->nw * cloth->nh; i++)
     {
-        cloth->setPosition(i, particles[i].position);
+        //cloth->setPosition(i, particles[i].position);
+        if (particles[i].cutted) {
+            //cloth->setPosition(i, glm::vec3(666,777,888));
+            cloth->setPosition(i, particles[i].position);
+            cloth->setcut(i);
+        }
+        else {
+            cloth->setPosition(i, particles[i].position);
+        }
     }
 }
 
 
 void RectClothSimulator::
-updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update) {
+updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update, bool cut) {
 
     /// to update the existed point
     if (update && scratchPoint != nullptr) {
@@ -281,8 +290,128 @@ updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update) {
         qn_1.block<3, 1>(3 * scratch_index, 0) = newPositionEigen;
     }
 
+    //cut
+    if (cut && scratchPoint != nullptr) {
+
+        const unsigned int nh = cloth->nh;
+        const unsigned int nw = cloth->nw;
+        unsigned int total = nh * nw;
+        /*auto newPosition = ori + scratchDistance * dir;
+        Eigen::Vector3f newPositionEigen(newPosition.x, newPosition.y, newPosition.z);*/
+        int scratch_index = scratchPoint - &particles[0];
+        particles[scratch_index].cutted = true;
+
+        for (int i = 0; i < particles[scratch_index].connectedSpringEndIndices.size(); i++) {
+            int spring_idx = particles[scratch_index].connectedSpringEndIndices[i];
+            springs[spring_idx].stiff = 0;
+            spring_idx = particles[scratch_index].connectedSpringStartIndices[i];
+            springs[spring_idx].stiff = 0;
+        }
+
+        //cut shared springs
+        //cloth->idxFromCoord(iw, ih)
+
+        if (scratch_index >= nw && scratch_index % nw > 0) {//leftup
+            if (cloth->cutted[scratch_index - nw - 1]) {
+                //from left to up
+                for (int i = 0; i < particles[scratch_index - 1].connectedSpringStartIndices.size(); i++) {
+                    int spring_index = particles[scratch_index - 1].connectedSpringStartIndices[i];
+                    if (springs[spring_index].toMassIndex == scratch_index - nw) {
+                        springs[spring_index].stiff = 0;
+                    }
+                }
+                //from up to left
+                for (int i = 0; i < particles[scratch_index - 1].connectedSpringEndIndices.size(); i++) {
+                    int spring_index = particles[scratch_index - 1].connectedSpringEndIndices[i];
+                    if (springs[spring_index].fromMassIndex == scratch_index - nw) {
+                        springs[spring_index].stiff = 0;
+                    }
+                }
+            }
+        }
+        if (scratch_index >= nw && scratch_index % nw < nw - 1) { //right up
+            if (cloth->cutted[scratch_index - nw + 1]) {
+                for (int i = 0; i < particles[scratch_index + 1].connectedSpringStartIndices.size(); i++) {
+                    int spring_index = particles[scratch_index + 1].connectedSpringStartIndices[i];
+                    if (springs[spring_index].toMassIndex == scratch_index - nw) {
+                        springs[spring_index].stiff = 0;
+                    }
+                }
+                for (int i = 0; i < particles[scratch_index + 1].connectedSpringEndIndices.size(); i++) {
+                    int spring_index = particles[scratch_index + 1].connectedSpringEndIndices[i];
+                    if (springs[spring_index].fromMassIndex == scratch_index - nw) {
+                        springs[spring_index].stiff = 0;
+                    }
+                }
+            }
+        }
+        if (scratch_index + nw < total && scratch_index % nw > 0) {//left down
+            if (cloth->cutted[scratch_index + nw - 1]) {
+                for (int i = 0; i < particles[scratch_index - 1].connectedSpringStartIndices.size(); i++) {
+                    int spring_index = particles[scratch_index - 1].connectedSpringStartIndices[i];
+                    if (springs[spring_index].toMassIndex == scratch_index + nw) {
+                        springs[spring_index].stiff = 0;
+                    }
+                }
+                for (int i = 0; i < particles[scratch_index - 1].connectedSpringEndIndices.size(); i++) {
+                    int spring_index = particles[scratch_index - 1].connectedSpringEndIndices[i];
+                    if (springs[spring_index].fromMassIndex == scratch_index + nw) {
+                        springs[spring_index].stiff = 0;
+                    }
+                }
+            }
+        }
+        if (scratch_index + nw < total && scratch_index % nw < nw - 1) {//right down
+            if (cloth->cutted[scratch_index + nw + 1]) {
+                for (int i = 0; i < particles[scratch_index + 1].connectedSpringStartIndices.size(); i++) {
+                    int spring_index = particles[scratch_index + 1].connectedSpringStartIndices[i];
+                    if (springs[spring_index].toMassIndex == scratch_index + nw) {
+                        springs[spring_index].stiff = 0;
+                    }
+                }
+                for (int i = 0; i < particles[scratch_index + 1].connectedSpringEndIndices.size(); i++) {
+                    int spring_index = particles[scratch_index + 1].connectedSpringEndIndices[i];
+                    if (springs[spring_index].fromMassIndex == scratch_index + nw) {
+                        springs[spring_index].stiff = 0;
+                    }
+                }
+            }
+        }
+
+
+
+        /// L matrix
+        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>
+            spring_index_matrix = Eigen::MatrixXf::Zero(particles.size(), particles.size());
+        for (int i = 0; i < springs.size(); i++) {
+            const Spring& cur = springs[i];
+            spring_index_matrix(cur.fromMassIndex, cur.fromMassIndex) += cur.stiff;
+            spring_index_matrix(cur.fromMassIndex, cur.toMassIndex) -= cur.stiff;
+            spring_index_matrix(cur.toMassIndex, cur.fromMassIndex) -= cur.stiff;
+            spring_index_matrix(cur.toMassIndex, cur.toMassIndex) += cur.stiff;
+        }
+        Eigen::Matrix3f id_3; id_3.setIdentity();
+        this->L_matrix = std::move(Eigen::kroneckerProduct(spring_index_matrix, id_3));
+
+        /// cholesky decomposition
+        cholesky_decompsition = (mass_matrix + timeStep * timeStep * L_matrix).ldlt();
+
+        /// J matrix
+        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>
+            force_matrix = Eigen::MatrixXf::Zero(particles.size(), springs.size());
+        for (int i = 0; i < springs.size(); i++) {
+            const Spring& cur = springs[i];
+            force_matrix(cur.fromMassIndex, i) += cur.stiff;
+            force_matrix(cur.toMassIndex, i) -= cur.stiff;
+        }
+        this->J_matrix = std::move(Eigen::kroneckerProduct(force_matrix, id_3));
+    }
+
+
+
+
     /// to update a point that does not existed
-    if (update && scratchPoint == nullptr) {
+    if ((update || cut) && scratchPoint == nullptr) {
         float dist = 0.1f;
         for (MassParticle& particle : particles) {
             glm::vec3 diffVec = particle.position - ori;
@@ -297,7 +426,7 @@ updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update) {
     }
 
     /// NO updates and NO points
-    if (!update && scratchPoint != nullptr) {
+    if ((!update && !cut) && scratchPoint != nullptr) {
         scratchPoint = nullptr;
         scratchDistance = INFINITY;
     }
