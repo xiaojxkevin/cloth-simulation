@@ -1,4 +1,5 @@
 #include <iostream>
+#include <filesystem>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -7,6 +8,8 @@
 #include "cloth_renderer.hpp"
 #include "cloth_simulator.hpp"
 #include "world_frame.hpp"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 
 // constants
@@ -20,9 +23,20 @@ bool scratching = false;
 
 
 void processCameraInput(GLFWwindow* window, FirstPersonCamera* camera);
+void saveImage(const char* filepath, GLFWwindow* w);
+void deleteDirectoryContents(const std::filesystem::path& dir)
+{
+    for (const auto& entry : std::filesystem::directory_iterator(dir)) 
+        std::filesystem::remove_all(entry.path());
+}
 
 int main(int argc, char* argv[])
 {
+
+    /// Clean last kept images
+    unsigned long long countFrames = 1; // use for store images
+    deleteDirectoryContents("../Coding/imgs");
+
     GLFWwindow* window;
 
     // Window setup
@@ -42,7 +56,7 @@ int main(int argc, char* argv[])
         }
 
         // Create a windowed mode window and its OpenGL context
-        window = glfwCreateWindow(1024, 768, "Cloth Simulation with Mass Spring", NULL, NULL);
+        window = glfwCreateWindow(Width, Height, "Cloth Simulation with Mass Spring", NULL, NULL);
         if (!window) {
             glfwTerminate();
             return -1;
@@ -70,17 +84,17 @@ int main(int argc, char* argv[])
         // TODO: Tune overall and cloth settings here (especially shader path)
 
         // Overall settings
-        auto vertexShader = "/home/xiaojx/codes/cloth-simulation/Coding/res/shader/cloth.vs";
-        auto fragmentShader = "/home/xiaojx/codes/cloth-simulation/Coding/res/shader/cloth.fs";
+        auto vertexShader = "../Coding/res/shader/cloth.vs";
+        auto fragmentShader = "../Coding/res/shader/cloth.fs";
 
         /// axis settings
         WorldFrame wf;
-        Shader axisShader("/home/xiaojx/codes/cloth-simulation/Coding/res/shader/axis.vs",
-            "/home/xiaojx/codes/cloth-simulation/Coding/res/shader/axis.fs");
+        Shader axisShader("../Coding/res/shader/axis.vs",
+            "../Coding/res/shader/axis.fs");
 
         // Cloth settings
-        unsigned int nWidth = 10;
-        unsigned int nHeight = 10;
+        unsigned int nWidth = 30;
+        unsigned int nHeight = 20;
         float dx = 0.1f;
         auto clothTransform = glm::rotate(glm::mat4(1.0f),
                                           glm::radians(60.0f), {1.0f, 0.0f, 0.0f}); // Represents a rotation of 60 degrees around the x-axis.
@@ -123,8 +137,8 @@ int main(int argc, char* argv[])
                 processCameraInput(window, &camera);
 
                 /// Debug Update here only when p is pressed
-                if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS)
-                // if (true)
+                // if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS)
+                if (true)
                 {
                     // A fixed time step which should not be too large in order to stabilize the simulation
                     totalIterTime += deltaTime;
@@ -159,6 +173,16 @@ int main(int argc, char* argv[])
             axisShader.setMat4("projection", camera.getProjection());
             axisShader.setMat4("view", camera.getView());
             wf.draw(axisShader.id);
+
+            /// write window images to dir
+
+            if (countFrames % 2ull == 0)
+            {
+                std::string filePath = "../Coding/imgs/" 
+                    + std::to_string(countFrames) + ".jpeg";
+                saveImage(filePath.c_str(), window);
+            }
+            ++countFrames;
 
             // Swap front and back buffers
             glfwSwapBuffers(window);
@@ -245,4 +269,20 @@ void processCameraInput(GLFWwindow* window, FirstPersonCamera* camera)
     lastCursorY = static_cast<float>(curCursorY);
 
     lastFrame = currentFrame;
+}
+
+/// @brief https://lencerf.github.io/post/2019-09-21-save-the-opengl-rendering-to-image-file/
+void saveImage(const char* filepath, GLFWwindow* w) {
+    int width, height;
+    glfwGetFramebufferSize(w, &width, &height);
+    GLsizei nrChannels = 3;
+    GLsizei stride = nrChannels * width;
+    stride += (stride % 4) ? (4 - stride % 4) : 0;
+    GLsizei bufferSize = stride * height;
+    std::vector<char> buffer(bufferSize);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    glReadBuffer(GL_FRONT);
+    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, buffer.data());
+    stbi_flip_vertically_on_write(true);
+    stbi_write_jpg(filepath, width, height, nrChannels, buffer.data(), stride);
 }
