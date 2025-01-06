@@ -11,7 +11,7 @@
 #include "world_frame.hpp"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
-
+#include "sphere.h"
 
 #define SAVE_IMAGE true
 
@@ -126,7 +126,7 @@ int main(int argc, char* argv[])
         RectCloth cloth(nWidth, nHeight, dx, clothTransform);
         RectClothRenderer renderer(&shader, &camera, &cloth);
         RectClothSimulator simulator(&cloth, totalMass, stiffnessReference, airResistanceCoefficient, gravity);
-
+        Sphere sphere({ 0.5f, -1.5f, 0.0f }, 0.47f);
         // Setup iteration variables
         float currentTime = (float)glfwGetTime();
         float lastTime = currentTime;
@@ -186,7 +186,7 @@ int main(int argc, char* argv[])
 
             // Draw here
             renderer.draw();
-
+            sphere.draw();
             /// axis
             axisShader.use();
             axisShader.setMat4("projection", camera.getProjection());

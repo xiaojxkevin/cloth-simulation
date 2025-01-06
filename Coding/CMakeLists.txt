@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.18)
 
 project(Cloth-Simulation)
 
-set (CMAKE_CXX_STANDARD 17)
+set (CMAKE_CXX_STANDARD 20)
 
 # Add include path
 include_directories(
@@ -50,6 +50,7 @@ add_library(libmain
     src/cloth_renderer.cpp
     src/cloth_simulator.cpp
     src/shader.cpp
+    src/sphere.cpp
     ${GLAD_SRC}
 )
 target_include_directories(libmain
