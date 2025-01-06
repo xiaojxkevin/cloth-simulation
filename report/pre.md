@@ -115,6 +115,17 @@ Sphere Collision:
 
 ---
 
+
+## Implementation
+
+Cut Cloth:to modify the shape of the cloth.
+
+- Find the point with mouse, invalidate all springs connected to it and delete the triangles using it during rendering. 
+- add triangles to make the cutting hole symmetric and dealing with special case.
+
+
+---
+
 ## Results
 
 <div style="display: grid; grid-template-columns: 1fr 1fr;">
