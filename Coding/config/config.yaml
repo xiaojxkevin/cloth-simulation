@@ -1,6 +1,6 @@
-Mode: "COLLSION"
+Mode: "CUT" # one of "COLLSION", "CUT" or "SCRATCH"
 cloth:
-  Width: 30
+  Width: 20
   Height: 20
   dx: 0.1
   Mass: 1.0

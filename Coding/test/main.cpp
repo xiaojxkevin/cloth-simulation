@@ -25,7 +25,7 @@ glm::vec3 mouseRay = glm::vec3(0.0f);
 bool scratching = false;
 bool cut = false;
 bool collsion = false;
-YAML::Node config = YAML::LoadFile("D:/CG/cloth-simulation/Coding/config/config.yaml");
+YAML::Node config = YAML::LoadFile("../Coding/config/config.yaml");
 
 
 void processCameraInput(GLFWwindow* window, FirstPersonCamera* camera);
@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
     unsigned long long countFrames = 1; // use for store images
     std::string mode = config["Mode"].as<std::string>();
 #if SAVE_IMAGE
-        deleteDirectoryContents("D:/CG/cloth-simulation/Coding/imgs");
+        deleteDirectoryContents("../Coding/imgs");
 #endif
     
 
@@ -108,13 +108,13 @@ int main(int argc, char* argv[])
         // TODO: Tune overall and cloth settings here (especially shader path)
 
         // Overall settings
-        auto vertexShader = "D:/CG/cloth-simulation/Coding/res/shader/cloth.vs";
-        auto fragmentShader = "D:/CG/cloth-simulation/Coding/res/shader/cloth.fs";
+        auto vertexShader = "../Coding/res/shader/cloth.vs";
+        auto fragmentShader = "../Coding/res/shader/cloth.fs";
 
         /// axis settings
         WorldFrame wf;
-        Shader axisShader("D:/CG/cloth-simulation/Coding/res/shader/axis.vs",
-            "D:/CG/cloth-simulation/Coding/res/shader/axis.fs");
+        Shader axisShader("../Coding/res/shader/axis.vs",
+            "../Coding/res/shader/axis.fs");
 
         // Cloth settings
         unsigned int nWidth = config["cloth"]["Width"].as<int>();
@@ -188,6 +188,7 @@ int main(int argc, char* argv[])
                         simulator.step_fast();
 
                         simulator.updateScratchPoint(camera.getCameraPos(), mouseRay, scratching, cut);
+                        // std::cout << scratching << " " << cut << '\n';
                         // std::cout << camera.getCameraPos() << camera.getView();
 
                         float timeTaken = static_cast<float>(glfwGetTime()) - currentTime;
@@ -218,7 +219,7 @@ int main(int argc, char* argv[])
             if (countFrames % 2ull == 0)
             {
                 std::ostringstream oss;
-                oss << "D:/CG/cloth-simulation/Coding/imgs/"
+                oss << "../Coding/imgs/"
                     << std::setw(5) << std::setfill('0') << countFrames << ".jpeg";
                 std::string filePath = oss.str();
                 saveImage(filePath.c_str(), window);
@@ -301,20 +302,20 @@ void processCameraInput(GLFWwindow* window, FirstPersonCamera* camera)
     if (config["Mode"].as<std::string>() == "CUT") {
         if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
             mouseRay = camera->getMouseRay(curCursorX, curCursorY, Width, Height);
-            scratching = false;
             cut = true;
+        }
+        else {
+            cut =false;
         }
     }
     else if(config["Mode"].as<std::string>() == "SCRATCH"){
-        if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_C) != GLFW_PRESS) {
+        if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
             mouseRay = camera->getMouseRay(curCursorX, curCursorY, Width, Height);
             scratching = true;
-            cut = false;
         }
-    }
-    else {
-        scratching = false;
-        cut = false;
+        else {
+            scratching = false;
+        }
     }
     // update record
     lastCursorX = static_cast<float>(curCursorX);

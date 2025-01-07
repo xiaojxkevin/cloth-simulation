@@ -134,14 +134,14 @@ void Sphere::loadDataFromFile(const std::string& path) {
             if (ver_co != 0) {
                 vec3 new_po;
                 const char* cstr = line.c_str();
-                sscanf_s(cstr, "%f %f %fn", &new_po.x, &new_po.y, &new_po.z);
+                sscanf(cstr, "%f %f %fn", &new_po.x, &new_po.y, &new_po.z);
                 vertices_po.push_back(new_po);
                 ver_co -= 1;
             }
             else {
                 vec3 new_no;
                 const char* cstr = line.c_str();
-                sscanf_s(cstr, "%f %f %fn", &new_no.x, &new_no.y, &new_no.z);
+                sscanf(cstr, "%f %f %fn", &new_no.x, &new_no.y, &new_no.z);
                 vertices_no.push_back(new_no);
                 judge = 1;
                 no_co -= 1;
@@ -150,12 +150,12 @@ void Sphere::loadDataFromFile(const std::string& path) {
         else {
             if (judge == 0) {
                 const char* cstr = line.c_str();
-                sscanf_s(cstr, "%d %d %dn", &ver_co, &no_co, &fa_co);
+                sscanf(cstr, "%d %d %dn", &ver_co, &no_co, &fa_co);
             }
             else {
                 GLuint vi_1, vi_2, vi_3, ni_1, ni_2, ni_3;
                 const char* cstr = line.c_str();
-                sscanf_s(cstr, "%d %d %d %d %d %dn", &vi_1, &ni_1, &vi_2, &ni_2, &vi_3,
+                sscanf(cstr, "%d %d %d %d %d %dn", &vi_1, &ni_1, &vi_2, &ni_2, &vi_3,
                     &ni_3);
                 this->indices_.push_back(vi_1);
                 this->indices_.push_back(ni_1);

@@ -27,6 +27,7 @@ void RectClothSimulator::
 createMassParticles(float totalMass) {
     // Create mass particles based on given cloth.
     particles.resize(cloth->nw * cloth->nh);
+#pragma omp parallel for num_threads(4)
     for (unsigned int ih = 0; ih < cloth->nh; ih++) {
         for (unsigned int iw = 0; iw < cloth->nw; iw++) {
             MassParticle particle{ .position = cloth->getPosition(iw, ih),
@@ -45,7 +46,7 @@ void RectClothSimulator::
 createSprings(float stiffnessReference) {
     // First clear all springs
     springs.clear();
-
+#pragma omp parallel for num_threads(4)
     for (unsigned int ih = 0; ih < cloth->nh; ih++) {
         for (unsigned int iw = 0; iw < cloth->nw; iw++) {
             unsigned int currentParticleIndex = cloth->idxFromCoord(iw, ih);
@@ -220,6 +221,7 @@ solve() {
 
     for (int i = 0; i < max_iter; i++) {
         /// local step
+    #pragma omp parallel for num_threads(4)
         for (int j = 0; j < springs.size(); ++j) {
             int from = springs[j].fromMassIndex, to = springs[j].toMassIndex;
             Eigen::Vector3f p12 = x.block<3, 1>(3 * from, 0) - x.block<3, 1>(3 * to, 0);
@@ -389,6 +391,7 @@ updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update, bool cut) {
         /// L matrix
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>
             spring_index_matrix = Eigen::MatrixXf::Zero(particles.size(), particles.size());
+    #pragma omp parallel for num_threads(4)
         for (int i = 0; i < springs.size(); i++) {
             const Spring& cur = springs[i];
             spring_index_matrix(cur.fromMassIndex, cur.fromMassIndex) += cur.stiff;
@@ -405,6 +408,7 @@ updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update, bool cut) {
         /// J matrix
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>
             force_matrix = Eigen::MatrixXf::Zero(particles.size(), springs.size());
+    #pragma omp parallel for num_threads(4)
         for (int i = 0; i < springs.size(); i++) {
             const Spring& cur = springs[i];
             force_matrix(cur.fromMassIndex, i) += cur.stiff;
@@ -431,7 +435,7 @@ updateScratchPoint(glm::vec3 ori, glm::vec3 dir, bool update, bool cut) {
         }
     }
 
-    /// NO updates and NO points
+    /// NO updates, reset
     if ((!update && !cut) && scratchPoint != nullptr) {
         scratchPoint = nullptr;
         scratchDistance = INFINITY;
