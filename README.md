@@ -1,20 +1,23 @@
 # cloth-simulation
 Final Project of CS171 in ShanghaiTech
 
-## Log 
+## Setup
 
-### xjx-dev
+We have upload used external libraries thus you do not have to download other libraries. But you need to create a `imgs` folder in `Coding`.
 
-- Upload Eigen 3.4.0 from [https://gitlab.com/libeigen/eigen/-/releases/3.4.0](https://gitlab.com/libeigen/eigen/-/releases/3.4.0).
+If you are using `VSCode`, we recommand using `CMake Tools`, which helps to configure, build and run the project.
 
-- Update cmakelists to support `eigen` and `openmp`.
+## Results
 
-- Finish constructor of `RectClothSimulator`.
 
-- Finish `fast_step`. However, I have got some problems:
-  1. In the local step, how to fix `x` and solve for `d`?
-  2. When calculate `externalForceVector`, we have got to assign a negative sign, why is that?
+Collision:
 
-- Fix a bug in scratch.
+![collision](./assets/collision.gif)
 
-- (newest) To add the collision with a sphere.
+Scratch:
+
+![scratch](./assets/scratch.gif)
+
+Cut:
+
+![cut](./assets/cut.gif)
