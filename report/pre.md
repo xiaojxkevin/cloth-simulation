@@ -19,11 +19,11 @@ style: |
 
 ## Motivation
 
-In hw5 we have used *(semi-implicit) symplectic Euler's method* as the solver for state iterations in a mass-spring system. However, this method is not accurate enough.
+- In hw5 we have used *(semi-implicit) symplectic Euler's method* as the solver for state iterations in a mass-spring system. However, this method is not stable, for instance, in practice `timeStep` should be set lower than $0.002$.
 
-Newton's method as the solver provides accurate results, but it costs time.
+- Newton's method as the solver provides accurate results, but it costs time.
 
-To come up with a method that is **fast** and **accurate** in results.
+- To come up with a method that is **fast** and **robust** in results (in practice, we just need a `timeStep` lower than $0.01$).
 
 ---
 
