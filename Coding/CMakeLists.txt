@@ -45,6 +45,7 @@ endif()
 set(YAML_INCLUDE extern/yaml-cpp-yaml-cpp-0.7.0/include)
 add_subdirectory(${YAML_CPP_DIR} ${CMAKE_BINARY_DIR}/yaml-cpp) 
 include_directories(${YAML_INCLUDE})
+set(YAML_CPP_BUILD_TESTS OFF)
 # ############################################
 
 # Add the main library
