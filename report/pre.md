@@ -19,7 +19,7 @@ style: |
 
 ## Motivation
 
-In hw4 we have used *(semi-implicit) symplectic Euler's method* as the solver for state iterations in a mass-spring system. However, this method is not accurate enough.
+In hw5 we have used *(semi-implicit) symplectic Euler's method* as the solver for state iterations in a mass-spring system. However, this method is not accurate enough.
 
 Newton's method as the solver provides accurate results, but it costs time.
 
@@ -103,48 +103,73 @@ and notice that $(M+h^2L)$ is PSD thus we can decompose it at the first place.
 
 ## Implementation
 
-Scratch Point: to make the system interactive.
+<div style="display: grid; grid-template-columns: 1fr 1fr;">
+  <div>
 
-- Find the closest point $k$ with the mouse.
-- Fix its state, i.e., $\mathbf{q}_n^k$ and $\mathbf{q}_{n-1}^k$ are set to be the same wit the position of the mouse.
+  Scratch Point: to make the system interactive.
+  - Find the closest point $k$ with the mouse.
+  - Fix its state, i.e., $\mathbf{q}_n^k$ and $\mathbf{q}_{n-1}^k$ are set to be the same wit the position of the mouse.
+  
+  </div>
+  <div>
 
-Sphere Collision:
+  <figure>
+    <div align=center>
+    <img src="../assets/scratch.gif" width="100%">
+    </div>
+  </figure>
+  
+  </div>
+</div>
 
-- Iterate all points (a set $K$) that may collide with the sphere.
-- Fix the state of those points, i.e., $\mathbf{q}_n^K$ and $\mathbf{q}_{n-1}^K$ are set to be on the sphere.
+---
+
+## Implementation
+
+<div style="display: grid; grid-template-columns: 1fr 1fr;">
+  <div>
+
+  Sphere Collision:
+  - Iterate all points (a set $K$) that may collide with the sphere.
+  - To force positions of points in set $K$, i.e., $\mathbf{q}_n^K$ to be on the sphere.
+    
+  </div>
+  <div>
+
+  <figure>
+    <div align=center>
+    <img src="../assets/collision.gif" width="100%">
+    </div>
+  </figure>
+  
+  </div>
+</div>
 
 ---
 
 
 ## Implementation
 
-Cut Cloth:to modify the shape of the cloth.
-
-- Find the point with mouse, invalidate all springs connected to it and delete the triangles using it during rendering. 
-- add triangles to make the cutting hole symmetric and dealing with special case.
-
-
----
-
-## Results
-
 <div style="display: grid; grid-template-columns: 1fr 1fr;">
   <div>
 
-  <figure>
-    <div align=center>
-    <img src="../assets/fixed.gif" width="100%">
-    </div>
-  </figure>
+  Cut Cloth:
+  - To modify the shape of the cloth.
+  - Find the point with mouse, invalidate all springs connected to it and delete the triangles using it during rendering. 
+  - Add triangles to make the cutting hole symmetric and dealing with special case.
   
   </div>
   <div>
 
   <figure>
     <div align=center>
-    <img src="../assets/sphere.gif" width="100%">
+    <img src="../assets/cut.gif" width="100%">
     </div>
   </figure>
   
   </div>
 </div>
+
+---
+
+# Thanks
